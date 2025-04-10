@@ -1,3 +1,5 @@
+// I used ChatGPT to help me draw the penguin and animate the background color.
+
 var VSHADER_SOURCE = `
 attribute vec4 a_Position;
 uniform float u_Size;
