@@ -34,6 +34,7 @@ let g_selectedSeg = 1;
 
 var g_shapesList = [];
 
+var bgAnimationId = null;
 
 function setupWebGL() {
     // Retrieve <canvas> element
@@ -89,6 +90,22 @@ function addActionsForHtmlUI(){
     document.getElementById('circleButton').onclick = function() {g_selectedType=CIRCLE};
 
     document.getElementById('drawPenguin').onclick = function() { renderPenguin(); };
+
+    document.getElementById('startAnimation').onclick = function() {
+        if (!bgAnimationId) {
+            animateBackgroundColor();
+        }
+    };
+    document.getElementById('stopAnimation').onclick = function() {
+        if (bgAnimationId) {
+            cancelAnimationFrame(bgAnimationId);
+            bgAnimationId = null;
+            // Reset to a static black background.
+            gl.clearColor(0.0, 0.0, 0.0, 1.0);
+            gl.clear(gl.COLOR_BUFFER_BIT);
+            renderAllShapes();
+        }
+    };
 
     //Slider Events
     document.getElementById('redSlide').addEventListener('mouseup', function() {g_selectedColor[0] = this.value/100; });
@@ -296,5 +313,19 @@ function renderPenguin() {
   
   // Render all triangles.
   renderAllShapes();
+}
+  
+function animateBackgroundColor() {
+function update() {
+    let time = performance.now() / 1000;
+    let red   = (Math.sin(time) + 1) / 2;
+    let green = (Math.sin(time + 2*Math.PI/3) + 1) / 2;
+    let blue  = (Math.sin(time + 4*Math.PI/3) + 1) / 2;
+    gl.clearColor(red, green, blue, 1.0);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    renderAllShapes();
+    bgAnimationId = requestAnimationFrame(update);
+}
+bgAnimationId = requestAnimationFrame(update);
 }
   
