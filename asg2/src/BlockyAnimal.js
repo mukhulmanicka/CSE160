@@ -35,9 +35,12 @@ let g_tailAngle = 0;
 
 let g_animation = false;
 let g_idleAnimation = false;
-let g_headBobbingAnimation = false;
 
 let g_seconds = 0;
+let g_lastTimestamp = 0;
+let g_fps = 0;
+let g_frameCount = 0;
+let g_frameTime = 0;
 let g_isDragging = false;
 let g_lastX, g_lastY;
 
@@ -95,38 +98,58 @@ function connectVariablesToGLSL() {
 // Set up actions for the HTML UI elements
 function addActionsForHtmlUI(){
     document.getElementById('animationOnButton').onclick = function() { g_animation = true; };
-    document.getElementById('animationOffButton').onclick = function() { g_animation = false; };
-    document.getElementById('neckSlide').addEventListener('input', (e) => { g_neckAngle = e.target.value; renderScene(); });
-    document.getElementById('wingSlide').addEventListener('input', (e) => { g_wingAngle = e.target.value; renderScene(); });
-    document.getElementById('legSlide').addEventListener('input', (e) => { g_legAngle = e.target.value; renderScene(); });
-    document.getElementById('xAngleSlide').addEventListener('input', (e) => { g_globalAngleX = e.target.value; renderScene(); });
-    document.getElementById('yAngleSlide').addEventListener('input', (e) => { g_globalAngleY = e.target.value; renderScene(); });
-    document.getElementById('zAngleSlide').addEventListener('input', (e) => { g_globalAngleZ = e.target.value; renderScene(); });
+    // In the addActionsForHtmlUI function, modify the animationOffButton click handler:
+    document.getElementById('animationOffButton').onclick = function() {
+        g_animation = false;
+    
+        // Reset all animated angles to 0
+        g_legAngle = 0;
+        g_wingAngle = 0;
+        g_tailAngle = 0;
+        g_neckAngle = 0;
+        g_headAngle = 0;
+    
+        // Reset sliders back to center
+        document.getElementById('legSlide').value = 0;
+        document.getElementById('wingSlide').value = 0;
+        document.getElementById('neckSlide').value = 0;
+    
+        // Redraw the duck
+        renderScene();
+    };
+    
+    
+    document.getElementById('headSlide').addEventListener('input', function(e) { g_headAngle = parseFloat(e.target.value); renderScene(); });
+    document.getElementById('wingSlide').addEventListener('input', function(e) { g_wingAngle = parseFloat(e.target.value); renderScene(); });
+    document.getElementById('legSlide').addEventListener('input', function(e) { g_legAngle = parseFloat(e.target.value); renderScene(); });
+    document.getElementById('xAngleSlide').addEventListener('input', function(e) { g_globalAngleX = parseFloat(e.target.value); renderScene(); });
+    document.getElementById('yAngleSlide').addEventListener('input', function(e) { g_globalAngleY = parseFloat(e.target.value); renderScene(); });
+    document.getElementById('zAngleSlide').addEventListener('input', function(e) { g_globalAngleZ = parseFloat(e.target.value); renderScene(); });
 
+    let isDragging = false;
+    let lastX, lastY;
+    
     canvas.addEventListener('mousedown', (e) => {
-        g_isDragging = true;
-        g_lastX = e.clientX;
-        g_lastY = e.clientY;
-
-        if (e.shiftKey) {
-            g_idleAnimation = !g_idleAnimation;
-        }
+      isDragging = true;
+      lastX = e.clientX;
+      lastY = e.clientY;
     });
-
-    canvas.addEventListener('mouseup', (e) => {
-        g_isDragging = false;
-    });
-
+    
+    canvas.addEventListener('mouseup', (e) => { isDragging = false; });
+    
     canvas.addEventListener('mousemove', (e) => {
-        if (g_isDragging) {
-            let deltaX = e.clientX - g_lastX;
-            let deltaY = e.clientY - g_lastY;
-            g_globalAngleY += deltaX * 0.5;
-            g_globalAngleX += deltaY * 0.5;
-            g_lastX = e.clientX;
-            g_lastY = e.clientY;
-            renderScene();
-        }
+      if (isDragging) {
+        let dx = e.clientX - lastX;
+        let dy = e.clientY - lastY;
+    
+        g_globalAngleX += dx * 0.5;
+        g_globalAngleY += dy * 0.5;
+    
+        lastX = e.clientX;
+        lastY = e.clientY;
+    
+        renderScene();
+      }
     });
 }
 
@@ -143,36 +166,74 @@ function main() {
     // Set up actions for the HTML UI elements
     addActionsForHtmlUI();
 
-    // Set up the background color animation
+    // Render initial scene
+    renderScene();
+
+    // Start animation loop
+    g_lastTimestamp = performance.now();
     requestAnimationFrame(tick);
 }
 
-function tick() {
+function updatePerformance(timestamp) {
+    // Calculate time between frames
+    const elapsed = timestamp - g_lastTimestamp;
+    g_lastTimestamp = timestamp;
+    
+    // Update frame count and accumulated time
+    g_frameCount++;
+    g_frameTime += elapsed;
+    
+    // Update FPS once per second
+    if (g_frameTime >= 1000) {
+        g_fps = Math.round((g_frameCount * 1000) / g_frameTime);
+        g_frameCount = 0;
+        g_frameTime = 0;
+        
+        // Update the performance display
+        const performanceDisplay = document.getElementById('numdot');
+        if (performanceDisplay) {
+            performanceDisplay.innerHTML = `ms: ${elapsed.toFixed(2)} fps: ${g_fps}`;
+        }
+    }
+}
+
+function tick(timestamp) {
     g_seconds += 0.016; // Simulate 60 FPS
-    updateAnimationAngles();
+    
+    // Update performance metrics
+    updatePerformance(timestamp);
+    
+    // Only update animation angles if animation is enabled
+    if (g_animation || g_idleAnimation) {
+        updateAnimationAngles();
+    }
     renderScene();
     requestAnimationFrame(tick);
 }
 
 function updateAnimationAngles() {
     if (g_animation) {
-        g_legAngle = 20 * Math.sin(g_seconds * 5);
-        g_footAngle = 10 * Math.sin(g_seconds * 5);
-        g_wingAngle = 20 * Math.sin(g_seconds * 4);
-    } else {
-        g_legAngle = 0;
-        g_footAngle = 0;
-        g_wingAngle = 0;
+        g_legAngle = 10 * Math.sin(g_seconds * 5);
+        g_footAngle = 5 * Math.sin(g_seconds * 5);
+        g_wingAngle = 10 * Math.sin(g_seconds * 4);
+        
+        // Update slider positions to match animation
+        if (document.getElementById('legSlide')) {
+            document.getElementById('legSlide').value = g_legAngle;
+        }
+        if (document.getElementById('wingSlide')) {
+            document.getElementById('wingSlide').value = g_wingAngle;
+        }
     }
     
     if (g_idleAnimation) {
-        g_neckAngle = 15 * Math.sin(g_seconds * 1.5);
-        g_headAngle = 10 * Math.sin(g_seconds * 1.5); 
-        g_tailAngle = 5 * Math.sin(g_seconds * 2);
-    } else {
-        g_neckAngle = 0;
-        g_headAngle = 0;
-        g_tailAngle = 0;
+        g_neckAngle = 8 * Math.sin(g_seconds * 1.5);
+        g_headAngle = 8 * Math.sin(g_seconds * 1.5);
+        g_tailAngle = 3 * Math.sin(g_seconds * 2);
+        
+        if (document.getElementById('headSlide')) {
+            document.getElementById('headSlide').value = g_headAngle;
+        }
     }
 }
 

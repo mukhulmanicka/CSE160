@@ -10,7 +10,6 @@ function drawDuck() {
     let neck = new Cube();
     neck.color = [1.0, 0.85, 0.3, 1.0];
     neck.matrix.translate(-0.12, 0.3, 0.1);
-    // Always apply the rotation based on the calculated angle (like leg animation)
     neck.matrix.rotate(g_neckAngle, 1, 0, 0); // Keep X-axis rotation
     neck.matrix.scale(0.2, 0.3, 0.2);
     neck.render();
@@ -19,7 +18,6 @@ function drawDuck() {
     let head = new Cube();
     head.color = [1.0, 0.9, 0.5, 1.0];
     head.matrix.translate(-0.17, 0.5, 0.25);
-    // Always apply the rotation based on the calculated angle (like leg animation)
     head.matrix.rotate(g_headAngle, 1, 0, 0); // Keep X-axis rotation
     head.matrix.scale(0.3, 0.3, -0.3);
     head.render();
@@ -28,7 +26,6 @@ function drawDuck() {
     let beak = new Cube();
     beak.color = [1.0, 0.5, 0.0, 1.0]; // Orange beak
     beak.matrix.translate(-0.15, 0.51, 0);
-    // Always apply the rotation (it will be 0 if idle animation is off)
     beak.matrix.rotate(g_headAngle, 1, 0, 0);
     beak.matrix.scale(0.26, 0.1, -0.2);
     beak.render();
@@ -122,11 +119,10 @@ function drawDuck() {
     rightFoot.render();
 
     // Tail
-    let tail = new Cube();
+    let tail = new Sphere();
     tail.color = [1.0, 0.85, 0.3, 1.0];
-    tail.matrix.translate(0.2, 0.0, 0.6);
-    // Always apply the tail angle (which will be 0 if animations are off)
+    tail.matrix.translate(-0.01, 0.0, 0.6);
     tail.matrix.rotate(g_tailAngle, 0, 1, 0);
-    tail.matrix.scale(-0.48, 0.1, 0.2);
+    tail.matrix.scale(0.2, 0.1, 0.2);
     tail.render();
 }
