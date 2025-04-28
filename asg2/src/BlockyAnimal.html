@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Change a point color</title>
+  </head>
+
+  <body onload="main()">
+    <canvas id="webgl" width="400" height="400">
+    Please use a browser that supports "canvas"
+    </canvas>
+
+    <p id="numdot"> Frames: -- ms: -- fps: -- </p>
+
+    <p>Walk Animation</p>
+    <button type="button" id="animationOnButton">Start</button>
+    <button type="button" id="animationOffButton">Stop</button>
+
+    <p>
+    Camera Control
+    <p>
+    X Angle <input type="range" min="0" max="360" value="0" class="slider" id="xAngleSlide">
+    <p>
+    Y Angle <input type="range" min="0" max="360" value="0" class="slider" id="yAngleSlide">
+    <p>
+    Z Angle <input type="range" min="0" max="100" value="0" class="slider" id="zAngleSlide">
+    </p>
+
+    <p>
+    Head Angle
+    <input type="range" min="-45" max="45" value="0" class="slider" id="neckSlide">
+    <p>
+    <p>
+    Wing Angle
+    <input type="range" min="-45" max="45" value="0" class="slider" id="wingSlide">
+    <p>
+    <p>
+    Leg Angle
+    <input type="range" min="-45" max="45" value="0" class="slider" id="legSlide">
+    <p>
+
+    <script src="../lib/webgl-utils.js"></script>
+    <script src="../lib/webgl-debug.js"></script>
+    <script src="../lib/cuon-utils.js"></script>
+    <script src="../lib/cuon-matrix.js"></script>
+    <script src='Triangle.js'></script>
+    <script src="Sphere.js"></script>
+    <script src="Cube.js"></script>
+    <script src="DrawAnimal.js"></script>
+    <script src="BlockyAnimal.js"></script>
+  </body>
+</html>
