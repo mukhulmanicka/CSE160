@@ -1,3 +1,6 @@
+// I used ChatGPT to help me animation angles and performance metrics.
+// I also used the textbook and videos for the WebGL setup and rendering process.s
+
 var VSHADER_SOURCE = `
   attribute vec4 a_Position;
   uniform mat4 u_ModelMatrix;

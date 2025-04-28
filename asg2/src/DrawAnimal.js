@@ -1,3 +1,5 @@
+// I used ChatGPT to help me with the animation angles.
+
 function drawDuck() {
     // Body
     let body = new Cube();
