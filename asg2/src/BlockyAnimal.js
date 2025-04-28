@@ -98,7 +98,6 @@ function connectVariablesToGLSL() {
 // Set up actions for the HTML UI elements
 function addActionsForHtmlUI(){
     document.getElementById('animationOnButton').onclick = function() { g_animation = true; };
-    // In the addActionsForHtmlUI function, modify the animationOffButton click handler:
     document.getElementById('animationOffButton').onclick = function() {
         g_animation = false;
     
@@ -106,15 +105,13 @@ function addActionsForHtmlUI(){
         g_legAngle = 0;
         g_wingAngle = 0;
         g_tailAngle = 0;
-        g_neckAngle = 0;
         g_headAngle = 0;
     
         // Reset sliders back to center
         document.getElementById('legSlide').value = 0;
         document.getElementById('wingSlide').value = 0;
-        document.getElementById('neckSlide').value = 0;
+        document.getElementById('headSlide').value = 0;
     
-        // Redraw the duck
         renderScene();
     };
     
@@ -130,9 +127,25 @@ function addActionsForHtmlUI(){
     let lastX, lastY;
     
     canvas.addEventListener('mousedown', (e) => {
-      isDragging = true;
-      lastX = e.clientX;
-      lastY = e.clientY;
+        isDragging = true;
+        lastX = e.clientX;
+        lastY = e.clientY;
+        
+        if (e.shiftKey) {
+            g_idleAnimation = !g_idleAnimation;
+        
+            if (!g_idleAnimation) {
+            g_neckAngle = 0;
+            g_headAngle = 0;
+            g_tailAngle = 0;
+        
+            if (document.getElementById('headSlide')) {
+                document.getElementById('headSlide').value = 0;
+            }
+        
+            renderScene();
+            }
+        }
     });
     
     canvas.addEventListener('mouseup', (e) => { isDragging = false; });
@@ -206,8 +219,8 @@ function tick(timestamp) {
     // Only update animation angles if animation is enabled
     if (g_animation || g_idleAnimation) {
         updateAnimationAngles();
+        renderScene();
     }
-    renderScene();
     requestAnimationFrame(tick);
 }
 
