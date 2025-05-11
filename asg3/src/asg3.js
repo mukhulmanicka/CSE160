@@ -30,6 +30,12 @@ const PLACEMENT_DISTANCE = 3.0; // How far in front of the camera to place a blo
 const PLACED_BLOCK_SCALE = 0.3;  // The size of the placed blocks
 const GROUND_Y_LEVEL = -0.25;   // Assuming your floor is at y = -0.25
 
+var g_lastMouseX = 0;
+var g_lastMouseY = 0;
+const MOUSE_SENSITIVITY_X = 0.15; // Adjust as needed
+const MOUSE_SENSITIVITY_Y = 0.15; // Adjust as needed
+const KEY_PITCH_ANGLE = 2.0;    // Degrees to pitch per Z/X key press
+
 var VSHADER_SOURCE =`
 precision mediump float;
 attribute vec4 a_Position;
@@ -212,25 +218,33 @@ function main() {
 
     canvas.onmousedown = function(ev) {
         isDragging = true;
-        check(ev);
+        g_lastMouseX = ev.clientX; // Initialize last mouse position on drag start
+        g_lastMouseY = ev.clientY;
+        // check(ev); // Original call, keep if needed for picking on mousedown
+        if (ev.shiftKey) { 
+            // Placeholder for addBlock logic if you want it on click
+        } else {
+             check(ev); 
+        }
     };
     canvas.onmouseup = function(ev) {
         isDragging = false;
     };
-    canvas.onmouseout = function(ev) {
+    canvas.onmouseout = function(ev) { // Important to stop dragging if mouse leaves canvas
         isDragging = false;
     };
     canvas.onmousemove = function(ev) {
         if (isDragging) {
-            mouseCam(ev);
+            mouseLook(ev); // Changed from mouseCam to a more descriptive name
         }
     };
 
     initTextures();
     gl.clearColor(0.0, 0.0, 0.0, 1.0);
+
     g_startTime = performance.now() / 1000.0;
     g_lastFrameTime = performance.now();
-    g_fpsAccumulator = 0
+    g_fpsAccumulator = 0;
     g_frameCount = 0;
 
     requestAnimationFrame(tick);
@@ -253,40 +267,54 @@ function check(ev) {
 function convertCoordinatesEventToGL(ev){
     var x = ev.clientX;
     var y = ev.clientY;
-    var rect = ev.target.getBoundingClientRect() ;
+    var rect = ev.target.getBoundingClientRect();
+
     x = ((x - rect.left) - canvas.width / 2) / (canvas.width / 2);
     y = (canvas.height / 2 - (y - rect.top)) / (canvas.height / 2);
+
     return [x,y];
 }
 
-function mouseCam(ev){
-    var coord = convertCoordinatesEventToGL(ev);
-    var panAmount = coord[0] * 10;
-    if (panAmount < 0) {
-        g_camera.panMLeft(Math.abs(panAmount));
-    } else if (panAmount > 0) {
-        g_camera.panMRight(panAmount);
+function mouseLook(ev){
+    if (!isDragging) {
+        return;
     }
+
+    let deltaX = ev.clientX - g_lastMouseX;
+    let deltaY = ev.clientY - g_lastMouseY;
+
+    g_lastMouseX = ev.clientX;
+    g_lastMouseY = ev.clientY;
+
+    g_camera.panHorizontal(-deltaX * MOUSE_SENSITIVITY_X);
+    g_camera.panVertical(-deltaY * MOUSE_SENSITIVITY_Y);
 }
 
 function keydown(ev){
-    if (ev.keyCode == 87) {         // 'W' key for Forward
+    let angleStep = 2.0; // Degrees for panning
+
+    if (ev.keyCode == 87) { // W
         g_camera.forward();
-    } else if (ev.keyCode == 65) {  // 'A' key for Left
+    } else if (ev.keyCode == 65) { // A
         g_camera.left();
-    } else if (ev.keyCode == 83) {  // 'S' key for Backward
+    } else if (ev.keyCode == 83) { // S
         g_camera.back();
-    } else if (ev.keyCode == 68) {  // 'D' key for Right
+    } else if (ev.keyCode == 68) { // D
         g_camera.right();
-    } else if (ev.keyCode == 81) {  // 'Q' key to look left
-        g_camera.panLeft();
-    } else if (ev.keyCode == 69) {  // 'E' key to look right
-        g_camera.panRight();
-    } else if (ev.keyCode == 70) {  // 'F' key for Place
+    } else if (ev.keyCode == 81) { // Q
+        g_camera.panHorizontal(angleStep);
+    } else if (ev.keyCode == 69) { // E
+        g_camera.panHorizontal(-angleStep);
+    } else if (ev.keyCode == 90) { // Z
+        g_camera.panVertical(KEY_PITCH_ANGLE);
+    } else if (ev.keyCode == 88) { // X
+        g_camera.panVertical(-KEY_PITCH_ANGLE);
+    } else if (ev.keyCode == 70) { // F
         placeBlock();
-    } else if (ev.keyCode == 82) {  // 'R' key for Remove
+    } else if (ev.keyCode == 82) { // R
         removeBlock();
     }
+    
     renderScene();
 }
 
@@ -329,16 +357,12 @@ function placeBlock() {
 
 function removeBlock() {
     if (g_placedBlocks.length > 0) {
-        g_placedBlocks.pop(); // Removes the last block placed
+        g_placedBlocks.pop();
         console.log("Block removed. Total blocks: " + g_placedBlocks.length);
     } else {
         console.log("No blocks to remove.");
     }
 }
-
-// ... (keep all your other functions like main, tick, renderScene, setupWebGL, etc. as they were after the FPS fix) ...
-// Make sure the definitions for placeBlock and removeBlock are accessible to keydown,
-// e.g., not inside another function unless appropriate. Placing them at the global scope like other helpers is fine.
 
 function tick(){
     var currentTime = performance.now();
@@ -357,7 +381,7 @@ function tick(){
             fpsElement.textContent = "fps: " + local_fps.toFixed(2) + " | ms: " + local_ms.toFixed(2);
         }
         g_frameCount = 0;
-        g_fpsAccumulator = 0; // Reset for the next interval
+        g_fpsAccumulator = 0;
     }
 
     g_seconds = performance.now()/1000.0 - g_startTime;
