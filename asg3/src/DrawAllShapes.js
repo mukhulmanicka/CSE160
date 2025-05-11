@@ -1,6 +1,6 @@
 var g_map=[
    // [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-   // [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+   // [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
    // [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
    // [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
    // [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
@@ -35,42 +35,34 @@ var g_map=[
 ]
 
 function drawMap(){
-   for(x=0; x<32; x++){
-      for(y=0; y<32; y++){
-         if ((x == 0 || x == 31) && y%4 == 0){
-            var wall = new Cube();
-            wall.color = [.80, .70, .40, 1.0];
-            wall.textureNum = -2;
-            wall.matrix.scale(0.25,0.25,0.25);
-            wall.matrix.translate(x-16,-.25,y-16);
-            wall.renderfast();
-         }
-         if ((x == 0 || x == 31) && y%4 != 0){
-            var wall = new Cube();
-            wall.color = [.60, .40, .20, 1.0];
-            wall.textureNum = -2;
-            wall.matrix.scale(0.25,0.73,0.25);
-            wall.matrix.translate(x-16,-.25,y-16);
-            wall.renderfast();
-         }
-         if ((y == 0 || y == 31) && x%4 == 0){
-            var wall = new Cube();
-            wall.color = [.80, .70, .50, 1.0];
-            wall.textureNum = -2;
-            wall.matrix.scale(0.25,0.25,0.25);
-            wall.matrix.translate(x-16,-.25,y-16);
-            wall.renderfast();
-         }
-         if ((y == 0 || y == 31) && x%4 != 0){
-            var wall = new Cube();
-            wall.color = [.60, .40, .20, 1.0];
-            wall.textureNum = -2;
-            wall.matrix.scale(0.25,0.73,0.25);
-            wall.matrix.translate(x-16,-.25,y-16);
-            wall.renderfast();
-         }
-      }
-   }
+   // Tree Trunk
+   var trunk = new Cube();
+   trunk.color = [0.5, 0.35, 0.2, 1.0]; // A brownish color
+   trunk.textureNum = -2; // Use solid color (debug mode for color)
+   
+   var trunkMatrix = new Matrix4();
+   // Position the trunk so its base is at y = -0.25 (on the floor)
+   // and centered at x=0, z=0.
+   // Cube.renderfast() draws a 0->1 unit cube.
+   // To make a trunk 0.2 wide, 0.2 deep, 1.0 tall, centered at (0, y_base_center, 0):
+   trunkMatrix.translate(-0.1, -0.25, -0.1); // Move the cube's origin to the desired bottom-front-left
+   trunkMatrix.scale(0.2, 1.0, 0.2);       // Scale to desired dimensions
+   trunk.matrix = trunkMatrix;
+   trunk.renderfast(); // Use renderfast for simple, solid-colored blocks
+
+   // Tree Leaves (a simple cube on top of the trunk)
+   var leaves = new Cube();
+   leaves.color = [0.2, 0.6, 0.1, 1.0]; // A greenish color
+   leaves.textureNum = -2; // Use solid color
+   
+   var leavesMatrix = new Matrix4();
+   // Position the leaves so its base is at y = -0.25 (trunk base) + 1.0 (trunk height) = 0.75
+   // and centered at x=0, z=0.
+   // To make leaves 0.6 wide, 0.6 deep, 0.6 tall:
+   leavesMatrix.translate(-0.3, 0.75, -0.3); // Move the cube's origin
+   leavesMatrix.scale(0.6, 0.6, 0.6);        // Scale to desired dimensions
+   leaves.matrix = leavesMatrix;
+   leaves.renderfast();
 }
 
 function drawAllShapes(){

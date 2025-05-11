@@ -1,4 +1,4 @@
-// Global Variables for GLSL
+// Global Variables
 var gl;
 var canvas;
 var a_Position;
@@ -13,9 +13,8 @@ var u_Sampler0;
 var u_Sampler1;
 var u_whichTexture;
 var u_Clicked;
-
-// Camera Movement
 var g_camera;
+let isDragging = false;
 
 // UI
 var gAnimalGlobalRotation = 0; // Camera
@@ -175,20 +174,20 @@ function connectVariablesToGLSL(){
 
 // Texture Stuff ==================================================
 function initTextures() {
-    var image = new Image();
+    var image0 = new Image();
     var image1 = new Image();
-    if (!image) {
-        console.log('Failed to create the image object');
+    if (!image0) {
+        console.log('Failed to create the image0 object');
         return false;
     }
     if (!image1) {
         console.log('Failed to create the image1 object');
         return false;
     }
-    // Register the event handler to be called on loading an image
-    image.onload = function(){ sendTextureToTEXTURE0(image); };
+    // Register the event handler to be called on loading an image0
+    image0.onload = function(){ sendTextureToTEXTURE0(image0); };
     image1.onload = function(){ sendTextureToTEXTURE1(image1); };
-    image.src = 'grass.png';
+    image0.src = 'grass.png';
     image1.src = 'sky.jpg';
 
     return true;
@@ -198,21 +197,22 @@ function isPowerOf2(value) {
     return (value & (value - 1)) == 0;
 }
 
-function sendTextureToTEXTURE0(image) {
+// Grass
+function sendTextureToTEXTURE0(image0) {
     var texture = gl.createTexture();
     if(!texture){
         console.log('Failed to create the texture object');
         return false;
     }
 
-    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, 1); // Flip the image's y axis
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, 1); // Flip the image0's y axis
     // Enable texture unit0
     gl.activeTexture(gl.TEXTURE0);
     // Bind the texture object to the target
     gl.bindTexture(gl.TEXTURE_2D, texture);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, image);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, image0);
 
-    if (isPowerOf2(image.width) && isPowerOf2(image.height)) {
+    if (isPowerOf2(image0.width) && isPowerOf2(image0.height)) {
         gl.generateMipmap(gl.TEXTURE_2D);
     } else {
         // Set the texture parameters
@@ -227,22 +227,23 @@ function sendTextureToTEXTURE0(image) {
 
     console.log("Finished loadTexture");
 }
-// SKY
-function sendTextureToTEXTURE1(image) {
+
+// Sky
+function sendTextureToTEXTURE1(image0) {
     var texture = gl.createTexture();
     if(!texture){
         console.log('Failed to create the texture object');
         return false;
     }
 
-    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, 1); // Flip the image's y axis
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, 1); // Flip the image0's y axis
     // Enable texture unit0
     gl.activeTexture(gl.TEXTURE1);
     // Bind the texture object to the target
     gl.bindTexture(gl.TEXTURE_2D, texture);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, image);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, image0);
 
-    if (isPowerOf2(image.width) && isPowerOf2(image.height)) {
+    if (isPowerOf2(image0.width) && isPowerOf2(image0.height)) {
         gl.generateMipmap(gl.TEXTURE_2D);
     } else {
         // Set the texture parameters
@@ -257,7 +258,6 @@ function sendTextureToTEXTURE1(image) {
     console.log("Finished loadTexture1");
 }
 
-// Main ===========================================================
 function main() {
     setupWebGL();
     connectVariablesToGLSL();
@@ -265,13 +265,10 @@ function main() {
 
     g_camera = new Camera();
     document.onkeydown = keydown;
-    // up near your other globals
-    let isDragging = false;
 
-    // replace your existing canvas handlers with these
     canvas.onmousedown = function(ev) {
         isDragging = true;
-        check(ev);            // still do your click–picking logic
+        check(ev);
     };
     canvas.onmouseup = function(ev) {
         isDragging = false;
@@ -287,8 +284,6 @@ function main() {
     };
 
     initTextures();
-
-    // Specify the color for clearing <canvas>
     gl.clearColor(0.0, 0.0, 0.0, 1.0);
 
     requestAnimationFrame(tick);
@@ -298,63 +293,57 @@ function check(ev) {
     var picked = false;
     var x = ev.clientX, y = ev.clientY;
     var rect = ev.target.getBoundingClientRect();
-    if (rect.left <= x && x < rect.right && rect.top <= y && y < rect.bottom) { // inside canvas
+    if (rect.left <= x && x < rect.right && rect.top <= y && y < rect.bottom) {
         var x_in_canvas = x - rect.left, y_in_canvas = rect.bottom - y;
-        gl.uniform1i(u_Clicked, 1);  // Pass true to u_Clicked
-        // Read pixel at the clicked position
-        var pixels = new Uint8Array(4); // Array for storing the pixel value
+        gl.uniform1i(u_Clicked, 1);
+        var pixels = new Uint8Array(4);
         gl.readPixels(x_in_canvas, y_in_canvas, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
         console.log(pixels[0]);
-        if (pixels[0] == 255) // The mouse in on cube if R(pixels[0]) is 255
-        picked = true;
-
-        gl.uniform1i(u_Clicked, 0);  // Pass false to u_Clicked(rewrite the cube)
+        if (pixels[0] == 255)
+        gl.uniform1i(u_Clicked, 0);
     }
 }
 
-// Movement =======================================================
+// Movement
 function convertCoordinatesEventToGL(ev){
     var x = ev.clientX; // x coordinate of a mouse pointer
     var y = ev.clientY; // y coordinate of a mouse pointer
     var rect = ev.target.getBoundingClientRect() ;
 
-    // set coordinates based on origin
-    x = ((x - rect.left) - canvas.width/2)/(canvas.width/2);
-    y = (canvas.height/2 - (y - rect.top))/(canvas.height/2);
-
-    // Print coordinate in console
-    // console.log("("+x+","+y+")");
+    // Convert to x, y coordinates in canvas coordinate system
+    // and then to x, y coordinates in WebGL coordinate system
+    x = ((x - rect.left) - canvas.width / 2) / (canvas.width / 2);
+    y = (canvas.height / 2 - (y - rect.top)) / (canvas.height / 2);
 
     return [x,y];
 }
 
 function mouseCam(ev){
     coord = convertCoordinatesEventToGL(ev);
-    if(coord[0] < 0.5){ // left side
-        g_camera.panMLeft(coord[0]*-10);
-    } else{
-        g_camera.panMRight(coord[0]*-10);
+    if (coord[0] < 0.5) {
+        g_camera.panMLeft(coord[0] * -10);
+    } else {
+        g_camera.panMRight(coord[0] * -10);
     }
 }
 
 function keydown(ev){
-    if(ev.keyCode==39 || ev.keyCode == 68){ // Right Arrow or D
-        g_camera.right();
-    } else if (ev.keyCode==37 || ev.keyCode == 65){ // Left Arrow or A
-        g_camera.left();
-    } else if (ev.keyCode==38 || ev.keyCode == 87){ // up Arrow or W
+    if (ev.keyCode == 87) {             // W
         g_camera.forward();
-    } else if (ev.keyCode==40 || ev.keyCode == 83){ // down Arrow or S
+    } else if (ev.keyCode == 65) {      // A
+        g_camera.left();
+    } else if (ev.keyCode == 83) {      // S
         g_camera.back();
-    } else if (ev.keyCode==81){ // Q
+    } else if (ev.keyCode == 68) {      // D
+        g_camera.right();
+    } else if (ev.keyCode == 81) {      // Q
         g_camera.panLeft();
-    } else if (ev.keyCode==69){ // E
+    } else if (ev.keyCode == 69) {      // E
         g_camera.panRight();
     }
-        renderScene();
+    renderScene();
 }
 
-// TICK ===========================================================
 function tick(){
     g_seconds = performance.now()/1000.0 - g_startTime;
     updateAnimationAngles();
@@ -362,12 +351,12 @@ function tick(){
     requestAnimationFrame(tick);
 }
 
-// renderScene ====================================================
 function renderScene(){
-    // Use the camera's stored projection and view matrices
+    // Set the view matrix
     var projMat = g_camera.projMat;
     gl.uniformMatrix4fv(u_ProjectionMatrix, false, projMat.elements);
  
+    // Set the projection matrix
     var viewMat = g_camera.viewMat;
     gl.uniformMatrix4fv(u_ViewMatrix, false, viewMat.elements);
  
@@ -381,7 +370,7 @@ function renderScene(){
 
 function updateAnimationAngles(){
     if(g_Animation){
-        g_jointAngle = 10*Math.sin(g_seconds);
-        head_animation = 15*Math.sin(g_seconds);
+        g_jointAngle = 10 * Math.sin(g_seconds);
+        head_animation = 15 * Math.sin(g_seconds);
     }
 }
