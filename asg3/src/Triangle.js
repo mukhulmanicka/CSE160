@@ -42,20 +42,15 @@ class Triangle{
     gl.vertexAttribPointer(a_Position, 2, gl.FLOAT, false, 0, 0);
     gl.enableVertexAttribArray(a_Position);
 
-    // If a_UV was enabled by a 3D textured draw, disable it for this 2D non-textured draw.
-    if (a_UV >= 0) { // Check if a_UV is a valid attribute location
+    if (a_UV >= 0) {
         gl.disableVertexAttribArray(a_UV);
     }
-    // Similarly for a_Normal if it were used
-    // if (a_Normal >= 0) {
-    //     gl.disableVertexAttribArray(a_Normal);
-    // }
 
     gl.drawArrays(gl.TRIANGLES, 0, n);
  }
 
  function drawTriangle3D(vertices){
-    var n = vertices.length/3; // Number of vertices
+    var n = vertices.length / 3;
     var vertexBuffer = gl.createBuffer();
     if(!vertexBuffer){
        console.log('Failed to create the buffer object for 3D vertices');
@@ -64,26 +59,21 @@ class Triangle{
 
     gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.DYNAMIC_DRAW);
-    gl.vertexAttribPointer(a_Position, 3, gl.FLOAT, false, 0, 0); // 3 components for 3D
+    gl.vertexAttribPointer(a_Position, 3, gl.FLOAT, false, 0, 0);
     gl.enableVertexAttribArray(a_Position);
 
-    // Disable a_UV as this function only handles positions
-    if (a_UV >= 0) { // Check if a_UV is a valid attribute location
+    if (a_UV >= 0) {
         gl.disableVertexAttribArray(a_UV);
     }
-    // Disable a_Normal if it were used and not provided here
-    // if (a_Normal >= 0) { // Example if you add normals later
-    //     gl.disableVertexAttribArray(a_Normal);
-    // }
 
     gl.drawArrays(gl.TRIANGLES, 0, n);
  }
 
 
  function drawTriangle3DUV(vertices, uv){
-    var n = vertices.length/3; // Number of vertices, should match for UVs
+    var n = vertices.length / 3;
 
-    // --- Position Buffer ---
+    // Position Buffer
     var vertexBuffer = gl.createBuffer();
     if(!vertexBuffer){
        console.log('Failed to create the position buffer object in drawTriangle3DUV');
@@ -94,7 +84,7 @@ class Triangle{
     gl.vertexAttribPointer(a_Position, 3, gl.FLOAT, false, 0, 0);
     gl.enableVertexAttribArray(a_Position);
 
-    // --- UV Buffer ---
+    // UV Buffer
     var uvBuffer = gl.createBuffer();
     if(!uvBuffer){
        console.log('Failed to create the UV buffer object in drawTriangle3DUV');
@@ -102,14 +92,7 @@ class Triangle{
     }
     gl.bindBuffer(gl.ARRAY_BUFFER, uvBuffer);
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(uv), gl.DYNAMIC_DRAW);
-    gl.vertexAttribPointer(a_UV, 2, gl.FLOAT, false, 0, 0); // 2 components for UV
+    gl.vertexAttribPointer(a_UV, 2, gl.FLOAT, false, 0, 0);
     gl.enableVertexAttribArray(a_UV);
-
-    // Disable a_Normal if it were used and not provided here
-    // if (a_Normal >= 0) { // Example if you add normals later
-    //    gl.disableVertexAttribArray(a_Normal);
-    // }
-
-    // Draw ONCE after all attributes are set
     gl.drawArrays(gl.TRIANGLES, 0, n);
  }
