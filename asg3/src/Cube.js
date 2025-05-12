@@ -1,126 +1,125 @@
-class Cube{
-   constructor(){
-      this.color = [1.0, 1.0, 1.0, 1.0];
-      this.matrix = new Matrix4();
-      this.textureNum = -2; // Default to debug color
+class Cube {
+   constructor() {
+       this.color = [1.0, 1.0, 1.0, 1.0];
+       this.matrix = new Matrix4();
+       this.textureNum = -2;
+       this.positionVBO = null;
+       this.uvVBO = null;
+       this.vertexCount = 36;
+
+       this.buffersInitialized = false;
+   }
+
+   initBuffers() {
+       if (this.buffersInitialized || !gl) return;
+
+       const geom = Cube.getUnitCubeGeometry();
+
+       this.positionVBO = gl.createBuffer();
+       if (!this.positionVBO) {
+           console.error("Failed to create position VBO for Cube");
+           return;
+       }
+       gl.bindBuffer(gl.ARRAY_BUFFER, this.positionVBO);
+       gl.bufferData(gl.ARRAY_BUFFER, geom.positions, gl.STATIC_DRAW);
+
+       this.uvVBO = gl.createBuffer();
+       if (!this.uvVBO) {
+           console.error("Failed to create UV VBO for Cube");
+       }
+       gl.bindBuffer(gl.ARRAY_BUFFER, this.uvVBO);
+       gl.bufferData(gl.ARRAY_BUFFER, geom.uvs, gl.STATIC_DRAW);
+
+       this.buffersInitialized = true;
+       // console.log("Cube buffers initialized.");
    }
 
    render() {
-      var rgba = this.color;
+       if (!this.buffersInitialized) {
+           this.initBuffers();
+           if (!this.buffersInitialized) {
+               console.error("Cube.render() called but buffers not initialized.");
+               return; 
+           }
+       }
 
-      // Set which texture to use or if to use solid color
-      gl.uniform1i(u_whichTexture, this.textureNum);
+       gl.uniform1i(u_whichTexture, this.textureNum);
+       if (this.textureNum === -2) {
+            gl.uniform4f(u_FragColor, this.color[0], this.color[1], this.color[2], this.color[3]);
+       }
+       gl.uniformMatrix4fv(u_ModelMatrix, false, this.matrix.elements);
 
-      // Pass the base color (used if textureNum is -2, or for modulation if shader supported it)
-      gl.uniform4f(u_FragColor, rgba[0], rgba[1], rgba[2], rgba[3]);
+       // Positions
+       gl.bindBuffer(gl.ARRAY_BUFFER, this.positionVBO);
+       gl.vertexAttribPointer(a_Position, 3, gl.FLOAT, false, 0, 0);
+       gl.enableVertexAttribArray(a_Position);
 
-      // Pass the model matrix for this cube
-      gl.uniformMatrix4fv(u_ModelMatrix, false, this.matrix.elements);
+       // UVs
+       if (this.textureNum >= -1 && this.uvVBO && a_UV >= 0) {
+           gl.bindBuffer(gl.ARRAY_BUFFER, this.uvVBO);
+           gl.vertexAttribPointer(a_UV, 2, gl.FLOAT, false, 0, 0);
+           gl.enableVertexAttribArray(a_UV);
+       } else if (a_UV >= 0) {
+           gl.disableVertexAttribArray(a_UV);
+       }
 
-      // Define vertices and UVs for a standard cube face (0,0 to 1,1)
-      // UVs: (0,1) --- (1,1)
-      //       |         |
-      //      (0,0) --- (1,0)
-      // Standard UV mapping for a quad split into two triangles
-      const uvTri1 = [0,0, 1,1, 1,0]; // Corresponds to v1, v3, v2
-      const uvTri2 = [0,0, 0,1, 1,1]; // Corresponds to v1, v4, v3
-      // More common UV for quad (v0,v1,v2; v0,v2,v3)
-      // (0,0) (1,0) (1,1) ; (0,0) (1,1) (0,1) if vertices are ordered bottom-left, top-left, top-right etc.
-      // The original UVs were a bit mixed, let's use a consistent set for faces that get textured.
-      // For example, for a face with vertices (0,0), (1,0), (1,1), (0,1) (bottom-left, bottom-right, top-right, top-left)
-      // Tri1: (0,0,0), (1,0,0), (1,1,0) -> UVs: [0,0, 1,0, 1,1]
-      // Tri2: (0,0,0), (1,1,0), (0,1,0) -> UVs: [0,0, 1,1, 0,1]
-
-      // Front face: z=0
-      drawTriangle3DUV([0,0,0, 1,0,0, 1,1,0], [0,0, 1,0, 1,1]);
-      drawTriangle3DUV([0,0,0, 1,1,0, 0,1,0], [0,0, 1,1, 0,1]);
-
-      // Back face: z=1
-      drawTriangle3DUV([0,0,1, 1,1,1, 1,0,1], [0,0, 1,1, 1,0]); // Order for UVs might need adjustment based on winding
-      drawTriangle3DUV([0,0,1, 0,1,1, 1,1,1], [0,0, 0,1, 1,1]);
-
-      // Top face: y=1 (Solid color, or use UVs if textured)
-      // If solid color (textureNum = -2 or -1 often implies this for specific faces)
-      // For simplicity, let's assume if a cube is textured, all faces that can be are.
-      // If top/bottom are not meant to be textured by u_Sampler0/1, this part needs to change.
-      // The original used drawTriangle3D, implying no specific UVs for these.
-      // If textureNum != -2 and != -1, these will try to use texture with potentially stale/no UVs.
-      // Let's make them use drawTriangle3DUV as well if the cube is textured.
-      if (this.textureNum >= 0) {
-        drawTriangle3DUV([0,1,0, 1,1,1, 1,1,0], [0,0, 1,1, 1,0]); // Example UVs
-        drawTriangle3DUV([0,1,0, 0,1,1, 1,1,1], [0,0, 0,1, 1,1]);
-
-        // Bottom face: y=0
-        drawTriangle3DUV([0,0,0, 1,0,1, 0,0,1], [0,0, 1,1, 0,1]); // Example UVs
-        drawTriangle3DUV([0,0,0, 1,0,0, 1,0,1], [0,0, 1,0, 1,1]);
-
-        // Left face: x=0
-        drawTriangle3DUV([0,0,0, 0,1,1, 0,1,0], [0,0, 1,1, 1,0]); // Example UVs
-        drawTriangle3DUV([0,0,0, 0,0,1, 0,1,1], [0,0, 0,1, 1,1]);
-
-        // Right face: x=1
-        drawTriangle3DUV([1,0,0, 1,1,1, 1,0,1], [0,0, 1,1, 0,1]); // Example UVs
-        drawTriangle3DUV([1,0,0, 1,1,0, 1,1,1], [0,0, 1,0, 1,1]);
-      } else {
-        // If not textured, use drawTriangle3D (which now correctly disables a_UV)
-        // Top
-        drawTriangle3D([0.0,1.0,0.0, 1.0,1.0,0.0, 1.0,1.0,1.0 ]);
-        drawTriangle3D([0.0,1.0,1.0, 0.0,1.0,0.0, 1.0,1.0,1.0 ]);
-        // Bottom
-        drawTriangle3D([0.0,0.0,0.0, 0.0,0.0,1.0, 1.0,0.0,0.0 ]);
-        drawTriangle3D([1.0,0.0,0.0, 1.0,0.0,1.0, 0.0,0.0,1.0 ]);
-        // Left
-        drawTriangle3D([0.0,0.0,0.0, 0.0,1.0,0.0, 0.0,1.0,1.0 ]);
-        drawTriangle3D([0.0,1.0,1.0, 0.0,0.0,0.0, 0.0,0.0,1.0 ]);
-        // Right
-        drawTriangle3D([1.0,0.0,0.0, 1.0,1.0,0.0, 1.0,1.0,1.0 ]);
-        drawTriangle3D([1.0,1.0,1.0, 1.0,0.0,0.0, 1.0,0.0,1.0 ]);
-      }
+       gl.drawArrays(gl.TRIANGLES, 0, this.vertexCount);
    }
 
    renderfast() {
-      var rgba = this.color;
+       if (!this.buffersInitialized) {
+           this.initBuffers();
+           if(!this.buffersInitialized) {
+               console.error("Cube.renderfast() called but buffers not initialized.");
+               return;
+           }
+       }
 
-      // Pass the color (used if textureNum is -2)
-      gl.uniform4f(u_FragColor, rgba[0], rgba[1], rgba[2], rgba[3]);
-      // Set texture mode
-      gl.uniform1i(u_whichTexture, this.textureNum);
+       gl.uniform1i(u_whichTexture, -2);
+       gl.uniform4f(u_FragColor, this.color[0], this.color[1], this.color[2], this.color[3]);
+       gl.uniformMatrix4fv(u_ModelMatrix, false, this.matrix.elements);
 
-      // Pass the model matrix
-      gl.uniformMatrix4fv(u_ModelMatrix, false, this.matrix.elements);
+       // Positions
+       gl.bindBuffer(gl.ARRAY_BUFFER, this.positionVBO);
+       gl.vertexAttribPointer(a_Position, 3, gl.FLOAT, false, 0, 0);
+       gl.enableVertexAttribArray(a_Position);
 
-      // Consolidate all vertices for the cube
-      // Each face is 2 triangles = 6 vertices
-      // 6 faces * 6 vertices/face = 36 vertices
-      // Each vertex is 3 floats (x,y,z)
-      // Total floats = 36 * 3 = 108
-      var allverts = [
-        // Front Face
-        0.0,0.0,0.0,  1.0,0.0,0.0,  1.0,1.0,0.0,
-        0.0,0.0,0.0,  1.0,1.0,0.0,  0.0,1.0,0.0,
-        // Back Face
-        0.0,0.0,1.0,  1.0,1.0,1.0,  1.0,0.0,1.0,
-        0.0,0.0,1.0,  0.0,1.0,1.0,  1.0,1.0,1.0,
-        // Top Face
-        0.0,1.0,0.0,  1.0,1.0,0.0,  1.0,1.0,1.0,
-        0.0,1.0,0.0,  1.0,1.0,1.0,  0.0,1.0,1.0,
-        // Bottom Face
-        0.0,0.0,0.0,  1.0,0.0,1.0,  1.0,0.0,0.0,
-        0.0,0.0,0.0,  0.0,0.0,1.0,  1.0,0.0,1.0,
-        // Left Face
-        0.0,0.0,0.0,  0.0,1.0,0.0,  0.0,1.0,1.0,
-        0.0,0.0,0.0,  0.0,1.0,1.0,  0.0,0.0,1.0,
-        // Right Face
-        1.0,0.0,0.0,  1.0,1.0,1.0,  1.0,1.0,0.0,
-        1.0,0.0,0.0,  1.0,0.0,1.0,  1.0,1.0,1.0
-      ];
+       if (a_UV >= 0) {
+           gl.disableVertexAttribArray(a_UV);
+       }
 
-      // UV coordinates for the whole cube if renderfast is to be textured
-      // This requires drawTriangle3DUV or a similar function that takes a large batch.
-      // The current drawTriangle3D will only use positions.
-      // If renderfast cubes (map walls) are textured, they need UVs.
-      // If they are textureNum = -2 (solid color), then drawTriangle3D is fine as is.
-      // The map cubes in DrawAllShapes.js set textureNum = -2, so this is okay.
-      drawTriangle3D(allverts);
+       gl.drawArrays(gl.TRIANGLES, 0, this.vertexCount);
+   }
+
+   static getUnitCubeGeometry() {
+       // 36 vertices, 6 per face (2 triangles * 3 vertices)
+       const positions = new Float32Array([
+           // Front face (z=0)
+           0,0,0,  1,0,0,  1,1,0,    0,0,0,  1,1,0,  0,1,0,
+           // Back face (z=1)
+           0,0,1,  1,1,1,  1,0,1,    0,0,1,  0,1,1,  1,1,1,
+           // Top face (y=1)
+           0,1,0,  0,1,1,  1,1,1,    0,1,0,  1,1,1,  1,1,0,
+           // Bottom face (y=0)
+           0,0,0,  1,0,0,  1,0,1,    0,0,0,  1,0,1,  0,0,1,
+           // Right face (x=1)
+           1,0,0,  1,0,1,  1,1,1,    1,0,0,  1,1,1,  1,1,0,
+           // Left face (x=0)
+           0,0,0,  0,1,1,  0,0,1,    0,0,0,  0,1,0,  0,1,1,
+       ]);
+       
+       // Standard UVs for each face (0,0 to 1,1), 6 vertices per face
+       const uvs = new Float32Array(36 * 2);
+       let uvPtr = 0;
+       for (let i = 0; i < 6; i++) {
+           uvs[uvPtr++] = 0; uvs[uvPtr++] = 0;
+           uvs[uvPtr++] = 1; uvs[uvPtr++] = 0;
+           uvs[uvPtr++] = 1; uvs[uvPtr++] = 1;
+
+           uvs[uvPtr++] = 0; uvs[uvPtr++] = 0;
+           uvs[uvPtr++] = 1; uvs[uvPtr++] = 1;
+           uvs[uvPtr++] = 0; uvs[uvPtr++] = 1;
+       }
+       return { positions: positions, uvs: uvs };
    }
 }

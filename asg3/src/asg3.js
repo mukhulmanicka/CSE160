@@ -15,29 +15,34 @@ var u_whichTexture;
 var u_Clicked;
 var g_camera;
 let isDragging = false;
-var g_rotation = 0; // Camera
-var g_placedBlocks = []; // Array to store the blocks you place
-const PLACEMENT_DISTANCE = 3.0; // How far in front of the camera to place a block
-const PLACED_BLOCK_SCALE = 0.3;  // The size of the placed blocks
-const GROUND_Y_LEVEL = -0.25;   // Assuming your floor is at y = -0.25
+var g_rotation = 0;
+var g_placedBlocks = [];
 var g_lastMouseX = 0;
 var g_lastMouseY = 0;
-const MOUSE_SENSITIVITY_X = 0.15; // Adjust as needed
-const MOUSE_SENSITIVITY_Y = 0.15; // Adjust as needed
-const KEY_PITCH_ANGLE = 2.0;    // Degrees to pitch per Z/X key press
+const PLACEMENT_DISTANCE = 3.0;
+const PLACED_BLOCK_SCALE = 0.3;
+const GROUND_Y_LEVEL = -0.25;
+const MOUSE_SENSITIVITY_X = 0.15;
+const MOUSE_SENSITIVITY_Y = 0.15;
+const KEY_PITCH_ANGLE = 2.0;
 
 // Performance variables
 var g_startTime = performance.now() / 1000.0;
 var g_seconds = performance.now() / 1000.0 - g_startTime;
-var g_lastFrameTime = 0;        // Timestamp of the last frame processed
-var g_frameCount = 0;           // How many frames we've counted for the current FPS calculation
-var g_fpsAccumulator = 0;       // Accumulates time for FPS calculation
-var g_fpsDisplayInterval = 0.5; // How often to update the FPS display (e.g., every 0.5 seconds)
+var g_lastFrameTime = 0;
+var g_frameCount = 0;
+var g_fpsAccumulator = 0;
+var g_fpsDisplayInterval = 0.5;
 
-// --- Game State Variables for Grove Guardian ---
-var g_gameState = "IDLE"; // Possible states: "IDLE", "ROUND_STARTING", "ROUND_ACTIVE", "ROUND_WON", "GAME_OVER", "GAME_WON"
+// Game variables
+var gameMessageElem;
+var roundMessageElem;
+var gameOverMessageElem;
+var g_gameState = "IDLE";
 var g_currentRound = 0;
-var g_enemies = []; // Array to store enemy cube objects
+var g_enemies = [];
+var g_enemiesSpawnedThisRound = 0;
+var g_enemySpawnTimer = 0;
 
 const ROUND_CONFIGS = [
     { id: 1, enemiesToSpawn: 5,  speed: 0.4, spawnInterval: 3.0 },  // Round 1
@@ -45,19 +50,11 @@ const ROUND_CONFIGS = [
     { id: 3, enemiesToSpawn: 15, speed: 0.8, spawnInterval: 1.5 }   // Round 3
 ];
 
-var g_enemiesSpawnedThisRound = 0;
-var g_enemySpawnTimer = 0;
-
-const ENEMY_COLOR = [0.8, 0.1, 0.1, 1.0]; // Reddish for corrupted blocks
-const ENEMY_SCALE = PLACED_BLOCK_SCALE; // Use same scale as player-placed blocks or define new
-const TREE_TRUNK_XZ_RADIUS = 0.15; // Tree trunk is 0.2 wide, so radius is 0.1. Add a small buffer.
-const ENEMY_REMOVAL_DISTANCE = PLACEMENT_DISTANCE * 0.6; // How close player needs to be to remove enemy
-const ENEMY_REMOVAL_RADIUS = 0.5; // How close to reticle the enemy must be
-
-// Message Elements
-var gameMessageElem;
-var roundMessageElem;
-var gameOverMessageElem;
+const ENEMY_COLOR = [0.8, 0.1, 0.1, 1.0];
+const ENEMY_SCALE = PLACED_BLOCK_SCALE;
+const TREE_TRUNK_XZ_RADIUS = 0.15;
+const ENEMY_REMOVAL_DISTANCE = PLACEMENT_DISTANCE * 0.6;
+const ENEMY_REMOVAL_RADIUS = 0.5;
 
 var VSHADER_SOURCE =`
 precision mediump float;
@@ -250,24 +247,18 @@ function main() {
 
     canvas.onmousedown = function(ev) {
         isDragging = true;
-        g_lastMouseX = ev.clientX; // Initialize last mouse position on drag start
+        g_lastMouseX = ev.clientX;
         g_lastMouseY = ev.clientY;
-        // check(ev); // Original call, keep if needed for picking on mousedown
-        if (ev.shiftKey) { 
-            // Placeholder for addBlock logic if you want it on click
-        } else {
-             check(ev); 
-        }
     };
     canvas.onmouseup = function(ev) {
         isDragging = false;
     };
-    canvas.onmouseout = function(ev) { // Important to stop dragging if mouse leaves canvas
+    canvas.onmouseout = function(ev) {
         isDragging = false;
     };
     canvas.onmousemove = function(ev) {
         if (isDragging) {
-            mouseLook(ev); // Changed from mouseCam to a more descriptive name
+            mouseLook(ev);
         }
     };
 
@@ -280,20 +271,6 @@ function main() {
     g_frameCount = 0;
 
     requestAnimationFrame(tick);
-}
-
-// check function (Copied from your original asg3.js)
-function check(ev) {
-    var picked = false; // This variable is not used outside this function scope
-    var x = ev.clientX, y = ev.clientY;
-    var rect = ev.target.getBoundingClientRect();
-    if (rect.left <= x && x < rect.right && rect.top <= y && y < rect.bottom) {
-        var x_in_canvas = x - rect.left, y_in_canvas = rect.bottom - y;
-        gl.uniform1i(u_Clicked, 1);
-        var pixels = new Uint8Array(4);
-        gl.readPixels(x_in_canvas, y_in_canvas, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
-        gl.uniform1i(u_Clicked, 0);
-    }
 }
 
 function convertCoordinatesEventToGL(ev){
@@ -328,19 +305,18 @@ function keydown(ev){
     if (g_gameState === "IDLE" || g_gameState === "GAME_OVER" || g_gameState === "GAME_WON") {
         if (ev.keyCode == 66) { // 'B' key to Begin/Restart game
             startGame();
-            return; // Consume key press
+            return;
         }
     }
 
-    if (g_gameState.includes("ROUND")) { // Only allow game actions during rounds
+    if (g_gameState.includes("ROUND")) { 
         if (ev.keyCode == 70) { // 'F' key for Place Block
             placeBlock();
         } else if (ev.keyCode == 82) { // 'R' key for Remove
-            removeGameElement(); // New function to handle removing player or enemy blocks
+            removeGameElement();
         }
     }
 
-    // Camera controls always active (unless game over and you want to freeze controls)
     if (ev.keyCode == 87) { g_camera.forward(); }      // W
     else if (ev.keyCode == 65) { g_camera.left(); }    // A
     else if (ev.keyCode == 83) { g_camera.back(); }     // S
@@ -356,33 +332,24 @@ function placeBlock() {
     newBlock.color = [Math.random() * 0.8 + 0.2, Math.random() * 0.8 + 0.2, Math.random() * 0.8 + 0.2, 1.0]; // Random brighter color
     newBlock.textureNum = -2;
 
-    // Calculate placement position in front of the camera
     let eye = g_camera.eye;
     let at = g_camera.at;
 
     let forward_dir = new Vector3();
     forward_dir.set(at);
-    forward_dir.sub(eye); // forward_dir = at - eye
+    forward_dir.sub(eye);
     forward_dir.normalize();
-    forward_dir.mul(PLACEMENT_DISTANCE); // Scale by distance
+    forward_dir.mul(PLACEMENT_DISTANCE);
 
-    let placementCenterPos = new Vector3(); // This will be the CENTER of our new block
+    let placementCenterPos = new Vector3();
     placementCenterPos.set(eye);
     placementCenterPos.add(forward_dir);
-
-    // Adjust Y so the BOTTOM of the block is at GROUND_Y_LEVEL
     placementCenterPos.elements[1] = GROUND_Y_LEVEL + (PLACED_BLOCK_SCALE / 2);
 
-    // Set the block's matrix
-    // The Cube.renderfast() draws a unit cube from (0,0,0) to (1,1,1).
-    // To make its center at placementCenterPos and scale it:
-    // 1. Translate the unit cube so its center is at (0,0,0) -> translate by (-0.5, -0.5, -0.5)
-    // 2. Scale it to PLACED_BLOCK_SCALE
-    // 3. Translate it to the final placementCenterPos
     newBlock.matrix = new Matrix4();
     newBlock.matrix.translate(placementCenterPos.elements[0], placementCenterPos.elements[1], placementCenterPos.elements[2]);
     newBlock.matrix.scale(PLACED_BLOCK_SCALE, PLACED_BLOCK_SCALE, PLACED_BLOCK_SCALE);
-    newBlock.matrix.translate(-0.5, -0.5, -0.5); // Center the origin of the unit cube before scaling and final translation
+    newBlock.matrix.translate(-0.5, -0.5, -0.5);
 
     g_placedBlocks.push(newBlock);
     console.log("Block placed. Total blocks: " + g_placedBlocks.length);
@@ -409,31 +376,21 @@ function updateGameMessages() {
             break;
         case "ROUND_STARTING":
             gameMessageElem.textContent = "Get Ready!";
-            // When g_currentRound is 0, we are about to start Round 1 (index 0 of ROUND_CONFIGS).
-            // When g_currentRound is 1 (after round 1 won), we are about to start Round 2 (index 1).
-            // So, ROUND_CONFIGS[g_currentRound] refers to the config of the round that is about to start.
             if (g_currentRound < ROUND_CONFIGS.length && ROUND_CONFIGS[g_currentRound]) {
                 roundMessageElem.textContent = "Round " + ROUND_CONFIGS[g_currentRound].id + " is about to start...";
             } else if (g_currentRound >= ROUND_CONFIGS.length) {
-                // This case should ideally be handled by GAME_WON state before ROUND_STARTING is set again
                 roundMessageElem.textContent = "All rounds completed!";
             } else {
-                roundMessageElem.textContent = "Preparing..."; // Fallback
+                roundMessageElem.textContent = "Preparing...";
             }
             break;
         case "ROUND_ACTIVE":
             gameMessageElem.textContent = "Defend the Tree!";
-            // Here, g_currentRound is 1, 2, or 3, so g_currentRound-1 is the correct index for the active round.
             let currentConfig = ROUND_CONFIGS[g_currentRound-1];
             roundMessageElem.textContent = "Round: " + currentConfig.id + 
                                          " | Enemies Remaining (to spawn): " + (currentConfig.enemiesToSpawn - g_enemiesSpawnedThisRound) +
                                          " | Active Enemies: " + g_enemies.length;
             break;
-        // case "ROUND_WON": // This state was used in my previous detailed thought process
-                           // but the implemented code transitions directly or to GAME_WON.
-                           // If you add it, ensure indexing is correct.
-                           // For example: gameMessageElem.textContent = "Round " + ROUND_CONFIGS[g_currentRound-1].id + " Cleared!";
-            // break;
         case "GAME_OVER":
             gameMessageElem.textContent = "";
             roundMessageElem.textContent = "";
@@ -451,10 +408,10 @@ function startGame() {
     console.log("Starting Grove Guardian game...");
     g_currentRound = 0;
     g_enemies = [];
-    g_placedBlocks = []; // Clear player blocks too for a fresh game
+    g_placedBlocks = [];
     g_gameState = "ROUND_STARTING";
     updateGameMessages();
-    setTimeout(startNextRound, 3000); // Give player 3 seconds before first round
+    setTimeout(startNextRound, 3000);
 }
 
 function startNextRound() {
@@ -467,8 +424,8 @@ function startNextRound() {
 
     let config = ROUND_CONFIGS[g_currentRound - 1];
     g_enemiesSpawnedThisRound = 0;
-    g_enemySpawnTimer = 0; // Reset spawn timer for this round
-    g_enemies = []; // Clear any remaining enemies from a previous round (shouldn't happen with current logic)
+    g_enemySpawnTimer = 0;
+    g_enemies = [];
 
     g_gameState = "ROUND_ACTIVE";
     updateGameMessages();
@@ -478,108 +435,95 @@ function startNextRound() {
 function spawnEnemy() {
     let config = ROUND_CONFIGS[g_currentRound - 1];
     if (g_enemiesSpawnedThisRound >= config.enemiesToSpawn) {
-        return; // All enemies for this wave spawned
+        return;
     }
 
     let enemy = new Cube();
-    enemy.color = ENEMY_COLOR.slice(); // Use a copy
+    enemy.color = ENEMY_COLOR.slice();
     enemy.textureNum = -2;
     enemy.speed = config.speed;
 
-    // Determine spawn position in a circle around the origin, outside the main play area
-    const spawnDistanceFromOrigin = 5.0; // Distance from (0,0) to spawn enemies
-    let angle = Math.random() * Math.PI * 2; // Random angle
+    const spawnDistanceFromOrigin = 5.0;
+    let angle = Math.random() * Math.PI * 2;
     let spawnX = Math.cos(angle) * spawnDistanceFromOrigin;
     let spawnZ = Math.sin(angle) * spawnDistanceFromOrigin;
-    // Center Y for the enemy so its bottom is at GROUND_Y_LEVEL
     let spawnY = GROUND_Y_LEVEL + ENEMY_SCALE / 2; 
 
     enemy.matrix = new Matrix4();
-    enemy.matrix.translate(spawnX, spawnY, spawnZ); // Move to the spawn point (center of the enemy)
-    enemy.matrix.scale(ENEMY_SCALE, ENEMY_SCALE, ENEMY_SCALE); // Scale the enemy
-    enemy.matrix.translate(-0.5, -0.5, -0.5); // Adjust because Cube.renderfast() draws 0-1 local cube
+    enemy.matrix.translate(spawnX, spawnY, spawnZ);
+    enemy.matrix.scale(ENEMY_SCALE, ENEMY_SCALE, ENEMY_SCALE);
+    enemy.matrix.translate(-0.5, -0.5, -0.5);
 
     g_enemies.push(enemy);
     g_enemiesSpawnedThisRound++;
-    updateGameMessages(); // Update enemy count display
+    updateGameMessages();
 }
 
 function updateEnemies(deltaTime) {
     if (g_gameState !== "ROUND_ACTIVE") return;
 
-    // Attempt to spawn new enemy based on interval
     let config = ROUND_CONFIGS[g_currentRound - 1];
     g_enemySpawnTimer += deltaTime;
     if (g_enemiesSpawnedThisRound < config.enemiesToSpawn && g_enemySpawnTimer >= config.spawnInterval) {
         spawnEnemy();
-        g_enemySpawnTimer = 0; // Reset timer for next spawn
+        g_enemySpawnTimer = 0;
     }
 
     // Move existing enemies
     for (let i = g_enemies.length - 1; i >= 0; i--) {
         let enemy = g_enemies[i];
-
-        // Get enemy's current center position
-        // Matrix stores: [m00, m01, m02, m03, m10, m11, m12, m13, m20, m21, m22, m23, m30, m31, m32, m33]
-        // Translation is in elements[12], elements[13], elements[14] of the final composed matrix.
-        // This assumes matrix is Translate(world_center) * Scale * Translate(-0.5)
-        // So elements[12],[13],[14] are the world center of the enemy.
         let enemyPos = new Vector3([enemy.matrix.elements[12], enemy.matrix.elements[13], enemy.matrix.elements[14]]);
-
-        let treeBasePos = new Vector3([0, GROUND_Y_LEVEL + ENEMY_SCALE/2, 0]); // Target center of tree base area
+        let targetY = GROUND_Y_LEVEL + ENEMY_SCALE / 2;
+        let treeBasePos = new Vector3([0, targetY, 0]);
 
         let moveDir = new Vector3();
         moveDir.set(treeBasePos);
         moveDir.sub(enemyPos);
+        moveDir.elements[1] = 0;
         moveDir.normalize();
         moveDir.mul(enemy.speed * deltaTime);
 
-        // Update enemy matrix by translating it
-        enemy.matrix.translate(moveDir.elements[0]/ENEMY_SCALE, moveDir.elements[1]/ENEMY_SCALE, moveDir.elements[2]/ENEMY_SCALE);
-        // The above translate is relative to the *scaled and pre-translated (-0.5,-0.5,-0.5)* local space.
-        // It's simpler to update the world position directly if we reconstruct matrix:
-        let newEnemyCenter = new Vector3([enemyPos.elements[0] + moveDir.elements[0],
-                                         enemyPos.elements[1] + moveDir.elements[1],
-                                         enemyPos.elements[2] + moveDir.elements[2]]);
+        let newEnemyCenter = new Vector3([
+            enemyPos.elements[0] + moveDir.elements[0],
+            enemyPos.elements[1],
+            enemyPos.elements[2] + moveDir.elements[2]
+        ]);
 
         enemy.matrix = new Matrix4()
             .translate(newEnemyCenter.elements[0], newEnemyCenter.elements[1], newEnemyCenter.elements[2])
             .scale(ENEMY_SCALE, ENEMY_SCALE, ENEMY_SCALE)
-            .translate(-0.5, -0.5, -0.5);
+            .translate(-0.5, 0, -0.5);
 
 
         // Check collision with tree (simplified: check XZ distance to tree center)
         let distToTreeCenterXZ = Math.sqrt(
-            newEnemyCenter.elements[0] * newEnemyCenter.elements[0] + 
+            newEnemyCenter.elements[0] * newEnemyCenter.elements[0] +
             newEnemyCenter.elements[2] * newEnemyCenter.elements[2]
         );
 
-        if (distToTreeCenterXZ < TREE_TRUNK_XZ_RADIUS + ENEMY_SCALE/2) { // Collision
-            console.log("Enemy reached the tree!");
+        if (distToTreeCenterXZ < TREE_TRUNK_XZ_RADIUS + ENEMY_SCALE/2) {
+            console.log("Enemy reached the tree! Game Over.");
             g_gameState = "GAME_OVER";
             updateGameMessages();
-            return; // Stop further enemy processing this frame
+            return;
         }
     }
 
     // Check for round completion
     if (g_enemiesSpawnedThisRound === config.enemiesToSpawn && g_enemies.length === 0 && g_gameState === "ROUND_ACTIVE") {
         console.log("Round " + config.id + " cleared!");
-        g_gameState = "ROUND_WON"; // Or "BETWEEN_ROUNDS"
         updateGameMessages();
-         if (g_currentRound === ROUND_CONFIGS.length) { // Last round won
+         if (g_currentRound === ROUND_CONFIGS.length) {
             g_gameState = "GAME_WON";
             updateGameMessages();
         } else {
-            // Prepare for next round after a delay or message
             gameMessageElem.textContent = "Round " + config.id + " Cleared!";
             roundMessageElem.textContent = "Next round starting soon...";
-            setTimeout(startNextRound, 4000); // 4 seconds delay
+            setTimeout(startNextRound, 4000);
         }
     }
 }
 
-// Modify removeBlock to become removeGameElement
 function removeGameElement() {
     if (g_gameState !== "ROUND_ACTIVE") return; // Only allow removal during active round
 
@@ -603,17 +547,14 @@ function removeGameElement() {
         distVec.set(enemyCenter);
         distVec.sub(targetPoint);
         if (distVec.magnitude() < ENEMY_REMOVAL_RADIUS + ENEMY_SCALE / 2) {
-            g_enemies.splice(i, 1); // Remove enemy from array
+            g_enemies.splice(i, 1);
             console.log("Corrupted Block removed by player. Remaining: " + g_enemies.length);
             updateGameMessages();
-            return; // Removed one enemy, done for this key press
+            return;
         }
     }
 
-    // If no enemy removed, try to remove a player-placed block (original logic)
     if (g_placedBlocks.length > 0) {
-        // For simplicity, just remove the last placed block.
-        // Targeting player blocks would require similar distance checking to their positions.
         g_placedBlocks.pop();
         console.log("Player block removed. Total player blocks: " + g_placedBlocks.length);
     } else {
@@ -647,7 +588,7 @@ function tick(){
     g_seconds = currentTime / 1000.0 - g_startTime;
 
     if (g_gameState !== "GAME_OVER" && g_gameState !== "GAME_WON" && g_gameState !== "IDLE" && g_gameState !== "ROUND_STARTING" && g_gameState !== "ROUND_WON") {
-        updateAnimationAngles(); // Only if game is active
+        updateAnimationAngles();
     }
 
     if (g_gameState === "ROUND_ACTIVE") {
