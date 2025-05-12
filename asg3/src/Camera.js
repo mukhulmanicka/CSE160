@@ -131,44 +131,11 @@ class Camera {
        this.updateViewMatrix();
    }
 
-
-   // Kept original panLeft/panRight for key-based turning (Q/E keys)
-   // These rotate around the world UP axis.
    panLeft(){ // Q key
-      this.panHorizontal(2); // Small positive angle for consistency if panHorizontal expects angle for right turn
+      this.panHorizontal(2);
    }
 
    panRight(){ // E key
-      this.panHorizontal(-2); // Small negative angle
-   }
-
-   // panMLeft and panMRight are now effectively replaced by panHorizontal and panVertical
-   // for mouse control. If you still need them for other purposes, they can be kept.
-   // For now, assuming mouse will use panHorizontal and panVertical.
-
-   panMLeft(deg){
-      var f = new Vector3();
-      f.set(this.at);
-      f.sub(this.eye);
-      var rotationMatrix = new Matrix4();
-      rotationMatrix.setRotate(deg, this.up.elements[0], this.up.elements[1], this.up.elements[2]);
-      var f_prime = rotationMatrix.multiplyVector3(f);
-      var tempEye = new Vector3();
-      tempEye.set(this.eye);
-      this.at = tempEye.add(f_prime);
-      this.updateViewMatrix();
-   }
-
-   panMRight(deg){ // Original had positive deg here too, should be negative like panRight for consistency or accept signed deg
-      var f = new Vector3();
-      f.set(this.at);
-      f.sub(this.eye);
-      var rotationMatrix = new Matrix4();
-      rotationMatrix.setRotate(-deg, this.up.elements[0], this.up.elements[1], this.up.elements[2]); // Assuming deg is positive for magnitude
-      var f_prime = rotationMatrix.multiplyVector3(f);
-      var tempEye = new Vector3();
-      tempEye.set(this.eye);
-      this.at = tempEye.add(f_prime);
-      this.updateViewMatrix();
+      this.panHorizontal(-2);
    }
 }
