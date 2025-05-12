@@ -452,7 +452,7 @@ function spawnEnemy() {
     enemy.matrix = new Matrix4();
     enemy.matrix.translate(spawnX, spawnY, spawnZ);
     enemy.matrix.scale(ENEMY_SCALE, ENEMY_SCALE, ENEMY_SCALE);
-    enemy.matrix.translate(-0.5, -0.5, -0.5);
+    enemy.matrix.translate(-0.5, 0, -0.5);
 
     g_enemies.push(enemy);
     g_enemiesSpawnedThisRound++;
