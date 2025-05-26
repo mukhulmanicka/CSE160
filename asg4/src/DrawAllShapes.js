@@ -41,6 +41,26 @@ function drawAllShapes(){
    lightCube.matrix.translate(g_lightPos.elements[0], g_lightPos.elements[1], g_lightPos.elements[2]);
    lightCube.matrix.scale(0.1, 0.1, 0.1); // Make it small
 
+   // Trunk
+   var trunk = new Cube();
+   trunk.color = [0.5, 0.35, 0.2, 1.0];
+   trunk.textureNum = -2;
+   var trunkMatrix = new Matrix4();
+   trunkMatrix.translate(-0.1, -2, -0.1);
+   trunkMatrix.scale(0.2, 1.0, 0.2);
+   trunk.matrix = trunkMatrix;
+   trunk.renderfast();
+
+   // Leaves
+   var leaves = new Cube();
+   leaves.color = [0.2, 0.6, 0.1, 1.0];
+   leaves.textureNum = -2;
+   var leavesMatrix = new Matrix4();
+   leavesMatrix.translate(-0.1, -1.5, -0.1);
+   leavesMatrix.scale(0.6, 0.6, 0.6);
+   leaves.matrix = leavesMatrix;
+   leaves.renderfast();
+
    // Temporarily disable lighting for the light cube itself
    let currentLightingState = g_lightingOn;
    g_lightingOn = false; // Turn off lighting
